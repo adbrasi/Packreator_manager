@@ -51,15 +51,15 @@ class CharacterPromptGenerator:
         
         # Map organization selection to its corresponding value
         org_mapping = {
-            "lovehent": "loven",
-            "meitabu": "meita",
+            "lovehent": "mdf_an,ratatatat74",
+            "meitabu": "(suyasuyabi,ratatatat74)",
             "project3": "proj3 patreon"
         }
         
         # Organization-specific tags for hiresfix_prompts
         hiresfix_org_mapping = {
-            "lovehent": "masterpiece, best quality,mdf_an,artist:quasarcake,amazing quality, very aesthetic, absurdres",
-            "meitabu": "masterpiece, best quality,(suyasuyabi,dross,(ratatatat74:0.5))",
+            "lovehent": "mdf_an,artist:quasarcake",
+            "meitabu": "(suyasuyabi,dross,(ratatatat74:0.5))",
             "project3": ""
         }
         
@@ -70,15 +70,14 @@ class CharacterPromptGenerator:
         workspace_paths = {
             "lightning": "/teamspace/studios/this_studio/",
             "runpod": "/workspace/",
-            "sagemaker": "/workspace/sage"
+            "sagemaker": "/workspace/sage/"
         }
         
         workspace_path = workspace_paths[workspace]
         
         # Generate savepath
         sanitized_character_name = self.sanitize_path(character_name)
-        savepath = f"{workspace_path}{org_value}/{sanitized_character_name}"
-        savepath = self.clean_text(savepath)
+        savepath = f"{workspace_path}{organization}/{self.clean_text(sanitized_character_name)}"
         
         # Generate character prompt
         character_prompt = f"[{character_name}], {org_value}, {character_base}, {background}"
