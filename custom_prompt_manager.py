@@ -6,6 +6,7 @@ class CharacterPromptGenerator:
         return {
             "required": {
                 "organization": (["lovehent", "meitabu", "project3"], {}),
+                "project_type": (["comic", "pack", "extra"], {}),
                 "workspace": (["lightning", "runpod", "sagemaker"], {}),
                 "character_name": ("STRING", {"multiline": True}),
                 "character_base": ("STRING", {"multiline": True}),
@@ -45,7 +46,7 @@ class CharacterPromptGenerator:
         text = text.strip()
         return text
     
-    def generate_prompts(self, organization, workspace, character_name, character_base, 
+    def generate_prompts(self, organization, project_type,workspace, character_name, character_base, 
                         character_scene_details, background, final_details_quality_tags,
                         prompt_scenes, max_prompts_enabled, max_prompts):
         
@@ -68,16 +69,16 @@ class CharacterPromptGenerator:
         
         # Map workspace selection to its corresponding file path
         workspace_paths = {
-            "lightning": "/teamspace/studios/this_studio/",
-            "runpod": "/workspace/",
-            "sagemaker": "/workspace/sage/"
+            "lightning": "/teamspace/studios/this_studio/outputParagonCreator/",
+            "runpod": "/workspace/outputParagonCreator/",
+            "sagemaker": "/workspace/sage/outputParagonCreator/"
         }
         
         workspace_path = workspace_paths[workspace]
         
         # Generate savepath
         sanitized_character_name = self.sanitize_path(character_name)
-        savepath = f"{workspace_path}{organization}/{self.clean_text(sanitized_character_name)}"
+        savepath = f"{workspace_path}{organization}/{project_type}/{self.clean_text(sanitized_character_name)}"
         
         # Generate character prompt
         character_prompt = f"[{character_name}], {org_value}, {character_base}, {background}"
