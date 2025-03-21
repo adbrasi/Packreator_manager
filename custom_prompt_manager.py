@@ -5,7 +5,7 @@ class CharacterPromptGenerator:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "organization": (["lovehent", "meitabu", "project3"], {}),
+                "organization": (["lovehent", "meitabu", "VixMavis", "FutaVixen"], {}),
                 "project_type": (["comic", "pack", "extra"], {}),
                 "workspace": (["lightning", "runpod", "sagemaker"], {}),
                 "character_name": ("STRING", {"multiline": True}),
@@ -54,14 +54,16 @@ class CharacterPromptGenerator:
         org_mapping = {
             "lovehent": "mdf_an,ratatatat74",
             "meitabu": "(suyasuyabi,ratatatat74)",
-            "project3": "proj3 patreon"
+            "VixMavis": "Anime screencap,Koyorin",
+            "FutaVixen":"NOT_WORK"
         }
         
         # Organization-specific tags for hiresfix_prompts
         hiresfix_org_mapping = {
             "lovehent": "mdf_an,artist:quasarcake",
             "meitabu": "(suyasuyabi,dross,(ratatatat74:0.5))",
-            "project3": ""
+            "VixMavis": "Anime screencap,Koyorin,by free_style_\(yohan1754\)",
+            "FutaVixen":"NOT_WORK"
         }
         
         org_value = org_mapping[organization]
