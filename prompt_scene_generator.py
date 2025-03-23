@@ -52,38 +52,27 @@ class PromptSceneGenerator:
     
     def _get_context_lines(self, lines: List[str], index: int, context_size: int) -> List[str]:
         """
-        Get lines around the specified index to provide context.
+        Get the selected line and the line below it.
         
         Args:
             lines: List of all text lines
             index: Center index for context
-            context_size: Total number of lines to return (including center)
+            context_size: Total number of lines to return (ignored in this implementation)
             
         Returns:
-            List of context lines
+            List containing the selected line and the line below (if available)
         """
         if not lines:
             return []
         
-        # If context_size is 1, just return the selected line
-        if context_size <= 1:
-            return [lines[index]]
+        # Always get the selected line
+        result = [lines[index]]
         
-        # Calculate how many lines we need before and after
-        total_lines = len(lines)
+        # Add the line below if it exists
+        if index + 1 < len(lines):
+            result.append(lines[index + 1])
         
-        # Try to distribute context evenly (prefer more lines after than before if uneven)
-        lines_before = min((context_size - 1) // 2, index)
-        lines_after = min(context_size - 1 - lines_before, total_lines - index - 1)
-        
-        # Readjust lines_before if we couldn't get enough lines_after
-        lines_before = min(context_size - 1 - lines_after, index)
-        
-        # Extract the context
-        start_idx = index - lines_before
-        end_idx = index + lines_after + 1  # +1 because slices are exclusive at end
-        
-        return lines[start_idx:end_idx]
+        return result
     
     def _select_random_lines_with_context(self, file_type: str, count: int) -> List[str]:
         """

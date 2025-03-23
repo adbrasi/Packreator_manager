@@ -10,7 +10,7 @@ class ScenePromptNode:
                 "start_count": ("INT", {"default": 5, "min": 0, "max": 100}),
                 "middle_count": ("INT", {"default": 10, "min": 0, "max": 100}),
                 "end_count": ("INT", {"default": 3, "min": 0, "max": 100}),
-                "partner_text": ("STRING", {"default": ""}),
+                "partner_text": ("STRING",{"multiline": True, "default": ""}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 9999999999}),
             },
             "optional": {
