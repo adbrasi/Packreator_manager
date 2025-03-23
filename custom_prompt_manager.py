@@ -80,11 +80,11 @@ class CharacterPromptGenerator:
         
         # Generate savepath
         sanitized_character_name = self.sanitize_path(character_name)
-        savepath = f"{workspace_path}{organization}/{project_type}/{self.clean_text(sanitized_character_name)}"
+        savepath = f"{workspace_path}{organization}/{project_type}/{character_name}"
         
         # Generate character prompt
         character_prompt = f"[{character_name}], {org_value}, {character_base}, {background}"
-        character_prompt = self.clean_text(character_prompt)
+        #character_prompt = self.clean_text(character_prompt)
         
         # Process prompt scenes
         prompt_segments = prompt_scenes.split("/")
@@ -102,7 +102,7 @@ class CharacterPromptGenerator:
             if segment:  # Skip empty segments
                 # Construct full prompt for scene_prompts
                 full_prompt = f"[{character_name}], {segment}, {character_scene_details}, {final_details_quality_tags}"
-                full_prompt = self.clean_text(full_prompt)
+                #full_prompt = self.clean_text(full_prompt)
                 scene_prompts_list.append(full_prompt)
                 
                 # Construct hiresfix prompt with different format and organization-specific tags
