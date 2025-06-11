@@ -8,6 +8,6 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "CharacterPromptGenerator": "Character Prompt Generator 📝",
+    "CharacterPromptGenerator": "packreator manager",
     "ScenePromptNode": "Scene Prompt Generator 🎨"
 }

@@ -1,82 +1,130 @@
+"""
+danbooru_scraper.py
+Busca as tags mais frequentes de um personagem no Danbooru.
+
+Uso:
+    python danbooru_scraper.py <character_tag>
+"""
+
+import math
+import re
+import sys
+import time
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 from bs4 import BeautifulSoup
-from collections import Counter
-import re
-import math
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import sys
 
-def scrape_page(tag, page):
-    url = f"https://danbooru.donmai.us/posts?page={page}&tags={tag}"
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.RequestException:
+# --- Configurações ---------------------------------------------------------
+
+UA = "Mozilla/5.0 (compatible; TagScraper/1.0; +https://github.com/)"
+MAX_WORKERS = 8          # limite de threads
+TIMEOUT = 10             # segundos
+RETRIES = 3              # tentativas de download por página
+
+# --- Sessão HTTP com retries ----------------------------------------------
+
+session = requests.Session()
+session.headers["User-Agent"] = UA
+adapter = requests.adapters.HTTPAdapter(
+    pool_maxsize=MAX_WORKERS, max_retries=RETRIES
+)
+session.mount("https://", adapter)
+
+# --- Etapa 1 – baixar páginas ---------------------------------------------
+
+def fetch(url: str) -> str:
+    """Faz download de uma URL com pequenas retentativas."""
+    for _ in range(RETRIES):
+        try:
+            r = session.get(url, timeout=TIMEOUT)
+            r.raise_for_status()
+            return r.text
+        except requests.exceptions.RequestException:
+            time.sleep(1)
+    return ""
+
+def scrape_page(tag: str, page: int) -> list[str]:
+    """Extrai o conteúdo de data‑tags de uma página."""
+    html = fetch(f"https://danbooru.donmai.us/posts?page={page}&tags={tag}")
+    if not html:
         return []
-    
-    soup = BeautifulSoup(response.text, 'html.parser')
-    articles = soup.select('div.posts-container.gap-2 > article')
-    return [article['data-tags'] for article in articles]
+    soup = BeautifulSoup(html, "lxml")      # lxml é bem mais rápido
+    return [art["data-tags"] for art in soup.select(
+        "div.posts-container.gap-2 > article"
+    )]
 
-def scrape_booru(tag, num_pages=3):
-    tags_list = []
-    with ThreadPoolExecutor(max_workers=num_pages) as executor:
-        future_to_page = {executor.submit(scrape_page, tag, page): page for page in range(1, num_pages + 1)}
-        for future in as_completed(future_to_page):
-            try:
-                page_tags = future.result()
-                tags_list.extend(page_tags)
-            except Exception:
-                pass
-    return tags_list
+def scrape_booru(tag: str, num_pages: int = 3) -> list[str]:
+    """Busca várias páginas em paralelo e devolve a lista de strings de tags."""
+    workers = min(MAX_WORKERS, num_pages)
+    tags: list[str] = []
+    with ThreadPoolExecutor(max_workers=workers) as exe:
+        futures = {exe.submit(scrape_page, tag, p): p for p in range(1, num_pages + 1)}
+        for f in as_completed(futures):
+            tags.extend(f.result())
+    return tags
 
-def process_tags(tags_list, character_tag):
-    if not tags_list:
-        return f"1girl, {character_tag}"
-    
-    all_tags = []
-    for tags in tags_list:
-        all_tags.extend(tags.split())
-    
-    tag_counter = Counter(all_tags)
-    num_images = len(tags_list)
-    threshold = math.ceil(num_images / 2)
-    
-    frequent_tags = {tag: count for tag, count in tag_counter.items() if count >= threshold}
-    
-    keywords = [
-        "bangs", "belt", "bow", "braid", "choker", "earring", "ears", "eyes", "eyeshadow",
-        "hair", "hair ornament", "hairband", "hat", "headband", "headphones", "headwear",
-        "horns", "mask", "necklace", "ponytail", "tail", "thighhigh", "wings"
-    ]
-    
-    related_tags = [tag for tag in frequent_tags if any(keyword in tag for keyword in keywords)]
-    related_tags_sorted = sorted(related_tags, key=lambda x: tag_counter[x], reverse=True)
-    selected_tags = related_tags_sorted[:8]
-    
-    excluded_pattern = re.compile(r'^\d+(girl|boy)s?$')
-    additional_tags = []
-    for tag in sorted(frequent_tags, key=lambda x: tag_counter[x], reverse=True):
-        if (tag not in selected_tags and 
-            not excluded_pattern.match(tag) and 
-            tag != character_tag):
-            additional_tags.append(tag)
-            if len(additional_tags) == 2:
-                break
-    
-    final_tags = ["1girl", character_tag] + selected_tags + additional_tags
-    return ", ".join(final_tags)
+# --- Etapa 2 – filtrar e escolher tags ------------------------------------
 
-def get_character_tags(character_tag):
-    """Função principal que retorna os tags do personagem como uma string."""
-    tags_list = scrape_booru(character_tag, num_pages=3)
-    return process_tags(tags_list, character_tag)
+KEYWORDS = {
+    "bangs", "belt", "bow", "braid", "choker", "earring", "ears", "eyes",
+    "eyeshadow", "hair", "hair ornament", "hairband", "hat", "headband",
+    "headphones", "headwear", "horns", "mask", "necklace", "ponytail", "tail",
+    "thighhigh", "wings",
+}
+EXCLUDED_RE = re.compile(r"^(?!1)\d+(girl|boy)s?$")   # permite 1girl/1boy
+
+def process_tags(tags_raw: list[str], character_tag: str) -> str:
+    """Transforma tags brutas em uma string final, mantendo as mais relevantes."""
+    if not tags_raw:
+        return character_tag
+
+    # achata lista e conta frequência
+    all_tags = [t for raw in tags_raw for t in raw.split()]
+    counter = Counter(all_tags)
+
+    half = math.ceil(len(tags_raw) / 2)
+    frequent = {t: c for t, c in counter.items() if c >= half}
+
+    # gênero se aparecer em ≥ metade das imagens
+    gender_tag = next((g for g in ("1girl", "1boy") if g in frequent), None)
+
+    # tags físicas/visuais mais relevantes
+    related = sorted(
+        (t for t in frequent if any(k in t for k in KEYWORDS)),
+        key=lambda t: frequent[t],
+        reverse=True,
+    )[:8]
+
+    # mais duas genéricas, respeitando exclusões
+    additional = []
+    for t, _ in counter.most_common():
+        if t in related or t == character_tag or EXCLUDED_RE.match(t):
+            continue
+        additional.append(t)
+        if len(additional) == 2:
+            break
+
+    # monta lista final sem duplicatas, mantendo ordem
+    final = [character_tag]
+    if gender_tag:
+        final.append(gender_tag)
+    final.extend(related)
+    final.extend(additional)
+    return ", ".join(dict.fromkeys(final))   # dict mantém primeira ocorrência
+
+# --- Interface de alto nível ----------------------------------------------
+
+def get_character_tags(character_tag: str, pages: int = 3) -> str:
+    raw = scrape_booru(character_tag, pages)
+    return process_tags(raw, character_tag)
+
+# --- Execução direta -------------------------------------------------------
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Uso: python danbooru_scraper.py <character_tag>")
         sys.exit(1)
-    
-    character_tag = sys.argv[1]
-    result = get_character_tags(character_tag)
-    print(result)
+
+    print(get_character_tags(sys.argv[1]))
